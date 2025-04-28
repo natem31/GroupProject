@@ -10,4 +10,4 @@ def generate_time_blocks(start_hour=6, end_hour=22):
     while current < end:
         slots.append(current.time())
         current += timedelta(minutes=30)
-    return slots
+    return slots 

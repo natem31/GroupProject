@@ -1,5 +1,5 @@
 from models import Commitment
-from utils import generate_time_blocks
+from utilites import generate_time_blocks
 from collections import defaultdict
 from datetime import datetime, timedelta
 
