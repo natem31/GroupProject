@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>{{ user.name }}'s Weekly Schedule</h2>
+
+{% for day, events in schedule.items() %}
+    <h3>{{ day }}</h3>
+    <table>
+        <tr><th>Time</th><th>Event</th><th>Category</th></tr>
+        {% for event in events %}
+        <tr>
+            <td>{{ event[1] }} - {{ event[2] }}</td>
+            <td>{{ event[0] }}</td>
+            <td>{{ event[3] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% endfor %}
+<a href="/">Home</a>
+{% endblock %}
