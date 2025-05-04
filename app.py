@@ -39,13 +39,18 @@ def add_commitments(user_id):
     commitments = Commitment.query.filter_by(user_id=user_id).all()
     return render_template('add_commitments.html', form=form, user=user, commitments=commitments)
 
-@app.route('/user/<int:user_id>/schedule')
-def schedule(user_id):
+@app.route('/user/<int:user_id>/schedule', methods=['GET'])
+def view_schedule(user_id):
     user = User.query.get_or_404(user_id)
-    schedule = generate_weekly_schedule(user)
-    return render_template('schedule.html', user=user, schedule=schedule)
+    weekly_schedule = generate_weekly_schedule(user)
+
+    # Always show full week – no dropdown or day selection
+    return render_template(
+        'schedule.html',  # Make sure your template is named this
+        user=user,
+        schedule=weekly_schedule
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
-
 

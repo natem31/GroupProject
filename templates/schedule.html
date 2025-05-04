@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Weekly Schedule</title>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        .day { margin-bottom: 40px; border-bottom: 1px solid #ccc; padding-bottom: 20px; }
+        .event { margin: 5px 0; }
+        .Study { background-color: #f0f8ff; padding: 5px; }
+        .Class { background-color: #ffe4e1; padding: 5px; }
+        .Practice { background-color: #e6ffe6; padding: 5px; }
+        .Sleep { background-color: #dcdcdc; padding: 5px; }
+        .Meal { background-color: #fffacd; padding: 5px; }
+        h2 { background: #333; color: white; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Your Weekly Schedule</h1>
+
+    {% for day, events in schedule.items() %}
+    <div class="day">
+        <h2>{{ day }}</h2>
+        {% for title, start, end, category in events %}
+            {% set start_str = start.strftime('%H:%M') %}
+            {% set end_str = end.strftime('%H:%M') %}
+            {% set start_hour = start_str.split(':')[0]|int %}
+            {% set end_hour = end_str.split(':')[0]|int %}
+            {% if 6 <= start_hour < 22 or 6 < end_hour <= 22 %}
+                <div class="event {{ category }}">
+                    <strong>{{ title }}</strong><br>
+                    {{ start }} – {{ end }}<br>
+                    Category: {{ category }}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endfor %}
+</body>
+</html> 
+

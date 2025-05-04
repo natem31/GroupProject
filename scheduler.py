@@ -1,62 +1,74 @@
-from models import Commitment
-from utilites import generate_time_blocks
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
+from models import Commitment
 
 def generate_weekly_schedule(user):
     """
     Generate a dict {day: [events]} for a user's commitments.
-    Fill gaps with recommended tasks (Study, Meals, Rest).
+    Include only time between 06:00 and 22:00 for each day.
+    Add Sleep from 22:00 to 06:00 (shown as a final row for each day).
+    Fill other time with Study blocks.
     """
-
     days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     schedule = {day: [] for day in days}
     
-    # Pull user commitments
+    # Get all user commitments
     fixed = Commitment.query.filter_by(user_id=user.id).all()
-
-    # Organize commitments by day
     daily_blocks = defaultdict(list)
+
     for c in fixed:
+        # Ensure that start_time and end_time are datetime.time objects
+        if isinstance(c.start_time, str):  # If the time is a string, convert it
+            c.start_time = datetime.strptime(str(c.start_time), "%H:%M").time()
+        if isinstance(c.end_time, str):
+            c.end_time = datetime.strptime(str(c.end_time), "%H:%M").time()
+
+        # Add commitment to the respective day of the week
         daily_blocks[c.day_of_week].append((c.start_time, c.end_time, c.title, c.category))
 
-    # Build full day schedules
     for day in days:
+        current_time = datetime.combine(datetime.today(), time(6, 0))  # Change to datetime object
+        end_time = datetime.combine(datetime.today(), time(22, 0))  # Change to datetime object
+        events_today = sorted(daily_blocks[day], key=lambda x: x[0])  # Sort events by start time
         day_schedule = []
-        current_time = datetime.strptime("06:00", "%H:%M")
-        end_time = datetime.strptime("22:00", "%H:%M")
-        
-        # Sort commitments by start time
-        events_today = sorted(daily_blocks[day], key=lambda x: x[0])
-        
-        for event in events_today:
-            start, end, title, category = event
-            start_dt = datetime.combine(datetime.today(), start)
-            end_dt = datetime.combine(datetime.today(), end)
-            
-            # Fill free time before this event
-            while current_time + timedelta(minutes=30) <= start_dt:
-                day_schedule.append(('Open', current_time.time(), (current_time + timedelta(minutes=30)).time()))
-                current_time += timedelta(minutes=30)
 
-            # Add the event
-            day_schedule.append((title, start, end, category))
-            current_time = end_dt
-        
-        # Fill the remaining evening
+        for start, end, title, category in events_today:
+            # Convert start and end times to datetime objects
+            event_start = max(datetime.combine(datetime.today(), start), current_time)
+            event_end = min(datetime.combine(datetime.today(), end), end_time)
+
+            # Ignore events fully outside of range
+            if event_end <= current_time or event_start >= end_time:
+                continue
+
+            # Fill open time before event
+            while current_time + timedelta(minutes=30) <= event_start:
+                slot_end = current_time + timedelta(minutes=30)
+                day_schedule.append(('Open', current_time.time(), slot_end.time()))
+                current_time = slot_end
+
+            # Add the actual event with correct category
+            day_schedule.append((title, event_start.time(), event_end.time(), category))
+            current_time = event_end
+
+        # Fill any remaining time until 22:00
         while current_time + timedelta(minutes=30) <= end_time:
-            day_schedule.append(('Open', current_time.time(), (current_time + timedelta(minutes=30)).time()))
-            current_time += timedelta(minutes=30)
+            slot_end = current_time + timedelta(minutes=30)
+            day_schedule.append(('Open', current_time.time(), slot_end.time()))
+            current_time = slot_end
 
-        # Replace open blocks smartly
-        smart_day_schedule = []
-        for slot in day_schedule:
-            if slot[0] == 'Open':
-                # Recommend activities
-                smart_day_schedule.append(('Study', slot[1], slot[2], 'Study'))
+        # Smart activity substitution (Study only)
+        smart_schedule = []
+        for title, start, end, *rest in day_schedule:
+            if title == 'Open':
+                smart_schedule.append(('Study', start, end, 'Study'))
             else:
-                smart_day_schedule.append(slot)
-        
-        schedule[day] = smart_day_schedule
+                smart_schedule.append((title, start, end, *rest))
+
+        # Add Sleep block at the end (Sleep from 22:00 to 06:00)
+        smart_schedule.append(('Sleep', end_time.time(), time(6, 0), 'Sleep'))
+
+        schedule[day] = smart_schedule
 
     return schedule
+
